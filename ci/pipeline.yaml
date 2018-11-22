@@ -7,7 +7,7 @@ resource_types:
 gate-source: &gate-source
   git:
     uri: git@github.com:EugenMayer/concourse-gateway-example.git
-    private_key: ((github-key-readwrite))
+    private_key: ((github-private-key))
     branch: gates
 
 resources:
@@ -15,7 +15,7 @@ resources:
   type: git
   source:
     uri: git@github.com:EugenMayer/concourse-gateway-example.git
-    private_key: ((github-key-readwrite))
+    private_key: ((github-private-key))
     branch: master
 
 - name: a-gate

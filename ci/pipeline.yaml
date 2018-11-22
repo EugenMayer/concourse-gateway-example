@@ -1,0 +1,89 @@
+resource_types:
+- name: gate-resource
+  type: docker-image
+  source:
+    repository: meshcloud/gate-resource
+
+gate-source: &gate-source
+  git:
+    uri: git@github.com:EugenMayer/concourse-gateway-example.git
+    private_key: ((github-key-readwrite))
+    branch: gates
+
+resources:
+- name: repo
+  type: git
+  source:
+    uri: git@github.com:EugenMayer/concourse-gateway-example.git
+    private_key: ((github-key-readwrite))
+    branch: master
+
+- name: a-gate
+  type: gate-resource
+  source:
+    <<: *gate-source
+    gate: a
+
+- name: b-gate
+  type: gate-resource
+  source:
+    <<: *gate-source
+    gate: b
+
+- name: auto-gate
+  type: gate-resource
+  source:
+    <<: *gate-source
+    gate: autogate
+
+jobs:
+- name: push-a
+  plan:
+  - get: repo
+  - task: gen
+    file: repo/ci/tasks/gen-simple.yml
+  - put: a-gate
+    params:
+      item_file: gen/*
+
+- name: push-b
+  plan:
+  - get: repo
+  - task: gen
+    file: repo/ci/tasks/gen-simple.yml
+  - put: b-gate
+    params:
+      item_file: gen/*
+
+- name: push-autogate
+  plan:
+  - get: repo
+  - aggregate:
+    - get: a-gate
+    - get: b-gate
+  - task: gen
+    file: repo/ci/tasks/gen-autoclose.yml
+  - put: auto-gate
+    params:
+      item_file: gen/*
+
+- name: autoclose-autogate
+  plan:
+  - aggregate:
+    - get: a-gate
+      trigger: true
+    - get: b-gate
+      trigger: true
+  - put: auto-gate
+    params:
+      update_autoclose: true
+
+- name: echo
+  plan:
+  - aggregate:
+    - get: repo
+    - get: auto-gate
+      trigger: true
+      version: every
+  - task: echo
+    file: repo/ci/tasks/echo.yml
